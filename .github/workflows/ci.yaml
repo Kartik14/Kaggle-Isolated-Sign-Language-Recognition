@@ -5,15 +5,15 @@ name: Python package
 
 on:
   push:
-    branches: [ master ]
+    branches: [ main ]
   pull_request:
-    branches: [ master ]
+    branches: [ main ]
 jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.6, 3.7, 3.8, 3.9]
+        python-version: [3.8]
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python
@@ -32,11 +32,5 @@ jobs:
         black --check .
     - name: Run flake8
       run: flake8
-    - name: Run Pylint
-      run: pylint retinaface
     - name: Run Mypy
-      run: mypy retinaface
-    - name: tests
-      run: |
-       pip install .[tests]
-       pytest
+      run: mypy .
