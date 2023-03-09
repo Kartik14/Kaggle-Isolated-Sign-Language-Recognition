@@ -1,5 +1,6 @@
 from os.path import join
 from parser.preprocess_parser import PreprocessParser
+from typing import Dict
 
 import numpy as np
 import pandas as pd
@@ -18,7 +19,7 @@ class Preprocess:
     def __init__(self) -> None:
         self.params = PreprocessParser().parse_args()
         self.preprocessor = self.get_preprocessor()
-        self.preprocessed_data: dict = {"features": list(), "labels": list()}
+        self.preprocessed_data: Dict[str, list] = {"features": list(), "labels": list()}
 
         self.train_df = pd.read_csv(self.params.train_csv)
         if self.params.expt_run:
