@@ -1,7 +1,5 @@
-DATA_ROOT = (
-    "/home/jovyan/wakeup-sv-data-efs-pvc/USER/kartik.kdlwl/kaggle/Google_Isolated_Sign_Language_Recognition"
-    "/data/asl-signs"
-)
+DATA_ROOT = "/home/kartik/Kaggle/Google_Isolated_Sign_Language_Recognition/data/asl-signs"
+OUTPUT_ROOT = "/home/kartik/Kaggle/Google_Isolated_Sign_Language_Recognition/data/trained_models"
 
 ROWS_PER_FRAME = 543
 FACE_LANDMARKS_RANGE = (0, 468)
