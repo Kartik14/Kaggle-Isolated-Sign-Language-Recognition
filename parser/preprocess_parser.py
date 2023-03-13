@@ -26,8 +26,8 @@ class PreprocessParser(AbstractArgumentParser):
             "--mode",
             "-m",
             help="mode to use for preprocessing",
-            choices=["frame_mean_std"],
-            default="frame_mean_std",
+            choices=["frame_mean_std_v1", "frame_mean_std_v2"],
+            default="frame_mean_std_v1",
         )
-        self.parser.add_argument("--use_z", action="store_true", help="set to use z coordinate for training")
+        self.parser.add_argument("--skip_z", action="store_true", help="set to skip z coordinate")
         self.parser.add_argument("--expt_run", action="store_true", help="set to run on small part of data for expt")

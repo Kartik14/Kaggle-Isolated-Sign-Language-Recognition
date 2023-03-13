@@ -1,16 +1,20 @@
+import multiprocessing as mp
 from os.path import join
 from parser.preprocess_parser import PreprocessParser
 from typing import Dict
 
 import numpy as np
 import pandas as pd
+import tensorflow as tf
 from tqdm import tqdm
 
 import constants
-from data_processor.abstract_preprocessor import AbstractDataProcessor
-from data_processor.frame_mean_std_preprocessor import FrameMeanStdPreprocessor
+from data_processor.frame_mean_std_preprocessor import (
+    FrameMeanStdFeatureGenV1,
+    FrameMeanStdFeatureGenV2,
+)
 from helper.logging import logger
-from helper.utils import get_sign_encoder, load_relevant_data_subset_with_imputation
+from helper.utils import get_sign_encoder, load_relevant_data_subset
 
 
 class Preprocess:
@@ -23,25 +27,31 @@ class Preprocess:
 
         self.train_df = pd.read_csv(self.params.train_csv)
         if self.params.expt_run:
-            self.train_df = self.train_df.head(100)
-        self.sign_to_prediction_index = get_sign_encoder()
+            self.train_df = self.train_df.head(1000)
+        self.train_df["label"] = self.train_df["sign"].map(get_sign_encoder())
 
-    def get_preprocessor(self) -> AbstractDataProcessor:
-        if self.params.mode == "frame_mean_std":
-            return FrameMeanStdPreprocessor(self.params.use_z)
+    def get_preprocessor(self) -> tf.keras.layers.Layer:
+        if self.params.mode == "frame_mean_std_v1":
+            return FrameMeanStdFeatureGenV1(**vars(self.params))
+        elif self.params.mode == "frame_mean_std_v2":
+            return FrameMeanStdFeatureGenV2(**vars(self.params))
         else:
-            raise RuntimeError
+            raise RuntimeError(f"Invalid Preprocessor type {self.params.mode}")
+
+    def convert_features(self, pq_path: str) -> tf.Tensor:
+        feature_data = load_relevant_data_subset(join(constants.DATA_ROOT, pq_path))
+        return self.preprocessor(feature_data).numpy()
 
     def process(self) -> None:
         """extract features from each data sample"""
 
-        for row_id, row in tqdm(self.train_df.iterrows(), total=len(self.train_df)):
-            pq_path, label = row["path"], row["sign"]
-            prediction_index = self.sign_to_prediction_index[label]
-            landmark_features = load_relevant_data_subset_with_imputation(join(constants.DATA_ROOT, pq_path))
-            processed_features = self.preprocessor.transform(landmark_features)
-            self.preprocessed_data["features"].append(processed_features)
-            self.preprocessed_data["labels"].append(prediction_index)
+        with mp.Pool(processes=12) as pool:
+            preprocessed_results = pool.imap(self.convert_features, self.train_df.path.tolist(), chunksize=250)
+            for feature, label in tqdm(
+                zip(preprocessed_results, self.train_df.label.tolist()), total=len(self.train_df)
+            ):
+                self.preprocessed_data["features"].append(feature)
+                self.preprocessed_data["labels"].append(label)
 
         self.save_data()
 
