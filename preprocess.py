@@ -1,4 +1,5 @@
 import multiprocessing as mp
+import os
 from os.path import join
 from parser.preprocess_parser import PreprocessParser
 from typing import Dict
@@ -14,7 +15,12 @@ from data_processor.frame_mean_std_preprocessor import (
     FrameMeanStdFeatureGenV2,
 )
 from helper.logging import logger
-from helper.utils import get_sign_encoder, load_relevant_data_subset
+from helper.utils import (
+    get_sign_encoder,
+    load_relevant_data_subset,
+    seed_it_all,
+    set_tf_verbosity,
+)
 
 
 class Preprocess:
@@ -23,7 +29,11 @@ class Preprocess:
     def __init__(self) -> None:
         self.params = PreprocessParser().parse_args()
         self.preprocessor = self.get_preprocessor()
-        self.preprocessed_data: Dict[str, list] = {"features": list(), "labels": list()}
+        self.preprocessed_data: Dict[str, list] = {
+            "features": list(),
+            "labels": list(),
+            "participant_id": list(),
+        }
 
         self.train_df = pd.read_csv(self.params.train_csv)
         if self.params.expt_run:
@@ -45,13 +55,14 @@ class Preprocess:
     def process(self) -> None:
         """extract features from each data sample"""
 
-        with mp.Pool(processes=12) as pool:
+        with mp.Pool(processes=12, initializer=set_tf_verbosity) as pool:
             preprocessed_results = pool.imap(self.convert_features, self.train_df.path.tolist(), chunksize=250)
-            for feature, label in tqdm(
-                zip(preprocessed_results, self.train_df.label.tolist()), total=len(self.train_df)
+            for feature, (_, meta_data) in tqdm(
+                zip(preprocessed_results, self.train_df.iterrows()), total=len(self.train_df)
             ):
                 self.preprocessed_data["features"].append(feature)
-                self.preprocessed_data["labels"].append(label)
+                self.preprocessed_data["labels"].append(meta_data["label"])
+                self.preprocessed_data["participant_id"].append(meta_data["participant_id"])
 
         self.save_data()
 
@@ -61,4 +72,6 @@ class Preprocess:
 
 
 if __name__ == "__main__":
+    os.environ["CUDA_VISIBLE_DEVICES"] = ""
+    seed_it_all()
     Preprocess().process()

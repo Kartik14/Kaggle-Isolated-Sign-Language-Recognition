@@ -26,23 +26,16 @@ class TrainParser(AbstractArgumentParser):
             default="fully_connected_v1",
         )
         self.parser.add_argument(
-            "--epoch", type=int, default=100, help="Number of epochs to train for. Default is 100."
+            "--epoch", type=int, default=200, help="Number of epochs to train for. Default is 100."
         )
         self.parser.add_argument("--batch_size", type=int, default=64, help="Batch size for training. Default is 64.")
         self.parser.add_argument(
             "--lr", type=float, default=3.3e-4, help="Learning rate for the optimizer. Default is 3.3e-4."
         )
         self.parser.add_argument(
-            "--validation_fraction",
-            "-v",
-            type=float,
-            default=0.1,
-            help="Fraction of data to use for validation. Default is 0.1.",
-        )
-        self.parser.add_argument(
-            "--cross_validation_split",
+            "--cross_validation_splits",
             "-k",
             help="number of cross validation splits. Default is 7(21 participants).",
-            default=7,
+            default=4,
             type=int,
         )

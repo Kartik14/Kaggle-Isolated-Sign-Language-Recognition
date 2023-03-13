@@ -26,7 +26,6 @@ class PreprocessParser(AbstractArgumentParser):
             "--mode",
             "-m",
             help="mode to use for preprocessing",
-            choices=["frame_mean_std_v1", "frame_mean_std_v2"],
             default="frame_mean_std_v1",
         )
         self.parser.add_argument("--skip_z", action="store_true", help="set to skip z coordinate")

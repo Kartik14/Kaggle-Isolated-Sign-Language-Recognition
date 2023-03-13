@@ -1,10 +1,25 @@
 import json
+import os
+import random
 from os.path import join
 
 import numpy as np
 import pandas as pd
+import tensorflow as tf
 
 import constants
+
+
+def seed_it_all(seed: int = 14) -> None:
+    """Attempt to be Reproducible"""
+    os.environ["PYTHONHASHSEED"] = str(seed)
+    random.seed(seed)
+    np.random.seed(seed)
+    tf.random.set_seed(seed)
+
+
+def set_tf_verbosity() -> None:
+    os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 
 def get_sign_encoder() -> dict:
