@@ -129,3 +129,4 @@ dmypy.json
 
 # custom
 notebooks
+docker/kislr.tar

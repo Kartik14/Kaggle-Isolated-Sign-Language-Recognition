@@ -1,0 +1,10 @@
+less
+bash
+curl
+software-properties-common
+rsync
+tmux
+unzip
+vim
+wget
+zip
