@@ -21,9 +21,9 @@ class TrainParser(AbstractArgumentParser):
             "-a",
             help="The name of the class that defines the model architecture.",
             choices=[
-                "fully_connected",
+                "fully_connected_v1",
             ],
-            default="fully_connected",
+            default="fully_connected_v1",
         )
         self.parser.add_argument(
             "--epoch", type=int, default=100, help="Number of epochs to train for. Default is 100."
@@ -38,4 +38,11 @@ class TrainParser(AbstractArgumentParser):
             type=float,
             default=0.1,
             help="Fraction of data to use for validation. Default is 0.1.",
+        )
+        self.parser.add_argument(
+            "--cross_validation_split",
+            "-k",
+            help="number of cross validation splits. Default is 7(21 participants).",
+            default=7,
+            type=int,
         )

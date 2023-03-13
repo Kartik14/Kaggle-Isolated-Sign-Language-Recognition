@@ -47,18 +47,31 @@ class Trainer:
         self.model.compile(self.optimizer, self.loss_function, metrics="acc")
         self.model.summary()
 
-        # train
+        # get callback list
         self.callback_list = self.get_callbacks()
 
     def get_dataset(self) -> Tuple[np.ndarray, np.ndarray]:
         """Load features and labels from a numpy file."""
         dataset = np.load(self.params.train_data, allow_pickle=True).item()
         features = np.array(dataset["features"], dtype=np.float32)
+        assert not np.any(np.isnan(features)), "dataset contains NAN"
+        features = self.normalise_data(features)
         labels = np.array(dataset["labels"], dtype=np.uint8)
         assert (
             features.shape[0] == labels.shape[0]
         ), f"features {features.shape[0]} and labels array len mismatch {labels.shape[0]}"
         return features, labels
+
+    def normalise_data(self, features: np.ndarray) -> np.ndarray:
+        distribution_mean = np.mean(features, axis=0, keepdims=True)
+        distribution_std = np.std(features, axis=0, keepdims=True)
+        np.save(
+            join(self.result_dir, "distribution_stats.npy"),
+            {"distribution_mean": distribution_mean, "distribution_std": distribution_std},
+        )
+        logger.info(f'Saved distribution statistics to {join(self.result_dir, "distribution_stats.npy")}')
+        exit()
+        return (features - distribution_mean) / distribution_std
 
     def split_train_validation(self) -> Tuple[np.ndarray, ...]:
         """Split features and labels into train and validation sets."""
@@ -78,13 +91,13 @@ class Trainer:
         return train_x, train_y, val_x, val_y
 
     def get_model(self) -> Model:
-        """defines and build model layers"""
-        if self.model_architecture == "fully_connected":
+        """defines and builds model layers"""
+        if self.model_architecture == "fully_connected_v1":
             model_obj = FullyConnectedModel(input_shape=self.input_shape, n_labels=self.num_labels)
-            model_obj.create_layers()
-            return model_obj.build_model()
         else:
             raise RuntimeError
+        model_obj.create_layers()
+        return model_obj.build_model()
 
     def get_callbacks(self) -> list:
         """returns callbacks for training"""
