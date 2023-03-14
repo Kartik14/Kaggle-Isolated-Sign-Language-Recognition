@@ -44,7 +44,7 @@ class FrameMeanStdFeatureGenV1(layers.Layer):
 
 
 class FrameMeanStdFeatureGenV2(layers.Layer):
-    """Calculates mean and std across frames for features, Uses only lip features"""
+    """Calculates mean and std across frames for features, Uses only lips features"""
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(name="FrameMeanStdV2")
@@ -68,7 +68,7 @@ class FrameMeanStdFeatureGenV2(layers.Layer):
         landmarks = [tf.gather(inputs, self.lip_coords, axis=1)]
 
         # Get remaining landmarks
-        for lrange in self.landmark_ranges[1:]:
+        for lrange in self.landmark_ranges:
             landmarks.append(inputs[:, lrange[0] : lrange[1], :])
 
         landmarks = [tf.reshape(_l, (-1, feat_len)) for _l, feat_len in zip(landmarks, self.flat_feat_lens)]
