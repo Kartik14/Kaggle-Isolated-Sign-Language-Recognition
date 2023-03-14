@@ -53,20 +53,9 @@ class Trainer:
         dataset = np.load(self.params.train_data, allow_pickle=True).item()
         features = np.array(dataset["features"], dtype=np.float32)
         assert not np.any(np.isnan(features)), "dataset contains NAN"
-        features = self.normalise_data(features)
         labels = np.array(dataset["labels"], dtype=np.uint8)
         participant_id = np.array(dataset["participant_id"])
         return features, labels, participant_id
-
-    def normalise_data(self, features: np.ndarray) -> np.ndarray:
-        distribution_mean = np.mean(features, axis=0, keepdims=True)
-        distribution_std = np.std(features, axis=0, keepdims=True)
-        np.save(
-            join(self.result_dir, "distribution_stats.npy"),
-            {"distribution_mean": distribution_mean, "distribution_std": distribution_std},
-        )
-        logger.info(f'Saved distribution statistics to {join(self.result_dir, "distribution_stats.npy")}')
-        return (features - distribution_mean) / distribution_std
 
     def get_cross_validation_splits(self) -> Dict[int, Dict[str, list]]:
         sgkf = StratifiedGroupKFold(n_splits=self.params.cross_validation_splits, shuffle=True)
@@ -128,7 +117,7 @@ class Trainer:
                 self.result_dir,
                 f"fold{fold_num:>02}_{model.evaluate(val_x, val_y, verbose=0)[1]:.4f}".replace("0.", ""),
             )
-            logger.info(f"Saving CR {fold_num} model to folder {save_dir}")
+            logger.info(f"Saving CV {fold_num} model to folder {save_dir}")
             self.save_model(model, save_dir)
 
             # Cleanup
