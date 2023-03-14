@@ -26,7 +26,7 @@ class TrainParser(AbstractArgumentParser):
             default="fully_connected_v1",
         )
         self.parser.add_argument(
-            "--epoch", type=int, default=200, help="Number of epochs to train for. Default is 100."
+            "--epoch", type=int, default=200, help="Number of epochs to train for. Default is 200."
         )
         self.parser.add_argument("--batch_size", type=int, default=64, help="Batch size for training. Default is 64.")
         self.parser.add_argument(

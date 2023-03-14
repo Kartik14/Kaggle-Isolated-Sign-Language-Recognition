@@ -30,7 +30,7 @@ class AbstractArgumentParser(ABC):
         # Parse the command-line arguments and return a namespace object
         args = self.parser.parse_args()
 
-        if args.config is not None:
+        if hasattr(args, "config") and args.config is not None:
             args = self.load_config_params(args)
 
         return args

@@ -30,3 +30,10 @@ class PreprocessParser(AbstractArgumentParser):
         )
         self.parser.add_argument("--skip_z", action="store_true", help="set to skip z coordinate")
         self.parser.add_argument("--expt_run", action="store_true", help="set to run on small part of data for expt")
+        self.parser.add_argument(
+            "--feature_set",
+            nargs="+",
+            default="all",
+            choices=["all", "face", "left_hand", "right_hand", "pose"],
+            help="Subset of landmark features to use. Default is all features.",
+        )
