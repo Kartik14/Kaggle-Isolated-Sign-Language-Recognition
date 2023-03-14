@@ -3,13 +3,52 @@ OUTPUT_ROOT = "/home/kartik/Kaggle/Google_Isolated_Sign_Language_Recognition/tra
 
 NUM_LABELS = 250
 ROWS_PER_FRAME = 543
-FACE_LANDMARKS_RANGE = (0, 468)
-LEFT_HAND_LANDMARKS_RANGE = (468, 489)
-POSE_LANDMARKS_RANGE = (489, 522)
-RIGHT_HAND_LANDMARKS_RANGE = (522, 543)
 
-LIPS_UPPER_OUTER = [61, 185, 40, 39, 37, 0, 267, 269, 270, 409, 291]
-LIPS_LOWER_OUTER = [146, 91, 181, 84, 17, 314, 405, 321, 375, 291]
-LIPS_UPPER_INNER = [78, 191, 80, 81, 82, 13, 312, 311, 310, 415, 308]
-LIPS_LOWER_INNER = [78, 95, 88, 178, 87, 14, 317, 402, 318, 324, 308]
-LIPS_COORDINATES = list(set(LIPS_UPPER_OUTER + LIPS_LOWER_OUTER + LIPS_UPPER_INNER + LIPS_LOWER_INNER))
+Landmarks = {
+    "face": (0, 468),
+    "left_hand": (468, 489),
+    "pose": (489, 522),
+    "right_hand": (522, 543),
+    "lips": [
+        0,
+        267,
+        269,
+        270,
+        13,
+        14,
+        17,
+        146,
+        402,
+        405,
+        409,
+        415,
+        291,
+        37,
+        39,
+        40,
+        178,
+        308,
+        181,
+        310,
+        311,
+        312,
+        185,
+        314,
+        61,
+        317,
+        191,
+        318,
+        321,
+        324,
+        78,
+        80,
+        81,
+        82,
+        84,
+        87,
+        88,
+        91,
+        95,
+        375,
+    ],
+}

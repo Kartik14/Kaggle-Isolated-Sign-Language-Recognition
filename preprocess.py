@@ -10,10 +10,7 @@ import tensorflow as tf
 from tqdm import tqdm
 
 import constants
-from data_processor.frame_mean_std_preprocessor import (
-    FrameMeanStdFeatureGenV1,
-    FrameMeanStdFeatureGenV2,
-)
+from data_processor.frame_mean_std_preprocessor import FrameMeanStdFeatureGen
 from helper.logging import logger
 from helper.utils import (
     get_sign_encoder,
@@ -36,15 +33,13 @@ class Preprocess:
         }
 
         self.train_df = pd.read_csv(self.params.train_csv)
-        if self.params.expt_run:
+        if self.params.expt:
             self.train_df = self.train_df.head(1000)
         self.train_df["label"] = self.train_df["sign"].map(get_sign_encoder())
 
     def get_preprocessor(self) -> tf.keras.layers.Layer:
-        if self.params.mode == "frame_mean_std_v1":
-            return FrameMeanStdFeatureGenV1(**vars(self.params))
-        elif self.params.mode == "frame_mean_std_v2":
-            return FrameMeanStdFeatureGenV2(**vars(self.params))
+        if self.params.mode == "frame_mean_std":
+            return FrameMeanStdFeatureGen(**vars(self.params))
         else:
             raise RuntimeError(f"Invalid Preprocessor type {self.params.mode}")
 
