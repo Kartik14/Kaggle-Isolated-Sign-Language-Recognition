@@ -30,6 +30,7 @@ class Preprocess:
             "features": list(),
             "labels": list(),
             "participant_id": list(),
+            "config": list(vars(self.params).items()),
         }
 
         self.train_df = pd.read_csv(self.params.train_csv)

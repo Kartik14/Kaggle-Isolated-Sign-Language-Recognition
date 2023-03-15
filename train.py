@@ -60,7 +60,7 @@ class Trainer:
         labels = np.array(dataset["labels"], dtype=np.uint8)
         participant_id = np.array(dataset["participant_id"])
         with open(join(self.result_dir, "data.conf"), "w") as fd:
-            json.dump(dataset["config"], fd, indent=2)
+            json.dump(dict(dataset["config"]), fd, indent=2)
         return features, labels, participant_id
 
     def get_cross_validation_splits(self) -> Dict[int, Dict[str, list]]:

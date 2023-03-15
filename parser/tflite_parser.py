@@ -19,12 +19,8 @@ class TfLiteParser(AbstractArgumentParser):
             help="path(s) to trained model directory",
         )
         self.parser.add_argument(
-            "--norm_stats",
-            help="Path to normalisation stats",
-        )
-        self.parser.add_argument(
-            "--input_mode",
-            "-i",
-            help="layer to use for processing input",
-            default="frame_mean_std_v1",
+            "--input_conf",
+            "-ic",
+            help="path to input conf file",
+            required=True,
         )

@@ -1,17 +1,15 @@
+import json
 from os.path import join
 from parser.tflite_parser import TfLiteParser
 from typing import Any, Dict
 
-import keras
 import numpy as np
 import pandas as pd
 import tensorflow as tf
+from tensorflow import keras
 
 import constants
-from data_processor.frame_mean_std_preprocessor import (
-    FrameMeanStdFeatureGenV1,
-    FrameMeanStdFeatureGenV2,
-)
+from data_processor.frame_mean_std_preprocessor import FrameMeanStdFeatureGen
 from helper.logging import logger
 from helper.utils import get_sign_decoder, load_relevant_data_subset
 
@@ -64,35 +62,31 @@ def save_tflite_model(keras_model: tf.Module, save_path: str) -> None:
         f.write(tflite_model)
 
 
-def get_input_layer(input_mode: str) -> keras.layers.Layer:
-    if input_mode == "frame_mean_std_v1":
-        return FrameMeanStdFeatureGenV1()
-    elif input_mode == "frame_mean_std_v2":
-        return FrameMeanStdFeatureGenV2()
+def get_input_layer(input_mode: str, landmarks_set: list) -> keras.layers.Layer:
+    if input_mode == "frame_mean_std":
+        return FrameMeanStdFeatureGen(landmarks_set=landmarks_set)
     else:
         raise TypeError("Invalid Input layer mode")
 
 
 if __name__ == "__main__":
+    # load params
     params = TfLiteParser().parse_args()
 
-    model_kwargs = dict()
-
-    # load data statistics for standardisation
-    if params.norm_stats is not None:
-        data_stats = np.load(params.norm_stats, allow_pickle=True).item()
-        model_kwargs["distribution_mean"] = data_stats["distribution_mean"]
-        model_kwargs["distribution_std"] = data_stats["distribution_std"]
-
+    # load ensemble models
     model_dirs = params.model_dirs
     models = []
     for model_dir in model_dirs:
         model = keras.models.load_model(model_dir)
         models.append(model)
 
-    print(params.input_mode)
-    input_layer = get_input_layer(params.input_mode)
-    tflite_keras_model = TFLiteModel(input_layer, models, **model_kwargs)
+    # load input layer
+    with open(params.input_conf) as fd:
+        input_layer_params = json.load(fd)
+    input_layer = get_input_layer(input_layer_params["mode"], input_layer_params["landmarks_set"])
+
+    # create tflite keras model
+    tflite_keras_model = TFLiteModel(input_layer, models)
 
     # predict on sample
     decoder = get_sign_decoder()
@@ -100,9 +94,12 @@ if __name__ == "__main__":
     for _, test_sample in train_df.sample(20).iterrows():
         pq_path = test_sample["path"]
         sign = test_sample["sign"]
-        demo_output = tflite_keras_model(load_relevant_data_subset(join(constants.DATA_ROOT, pq_path)))
+        demo_output = tflite_keras_model(
+            tf.convert_to_tensor(load_relevant_data_subset(join(constants.DATA_ROOT, pq_path)))
+        )
         print(f"Prediction: {decoder[np.argmax(demo_output['outputs'])]}, Label: {sign}")
 
+    # save to model.tflite
     tflite_model_path = join(params.save_dir, "model.tflite")
     save_tflite_model(tflite_keras_model, tflite_model_path)
     logger.info(f"Saved tflite model {tflite_model_path}")
