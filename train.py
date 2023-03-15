@@ -6,32 +6,31 @@ from parser.train_parser import TrainParser
 from pprint import pprint
 from typing import Dict, Tuple
 
-import keras
 import numpy as np
-from keras.models import Model
 from sklearn.model_selection import StratifiedGroupKFold
+from tensorflow import keras
+from tensorflow.keras.models import Model
 
 import constants
 from helper.logging import logger
-from helper.utils import get_sign_encoder, seed_it_all
-from model.fully_connected_builder import FullyConnectedModel
+from helper.utils import get_sign_encoder, read_yaml_file, seed_it_all
+from model.fully_connected_builder import FullyConnectedV1
 
 
 class Trainer:
     """Class for training models"""
 
     def __init__(self) -> None:
-        self.params = TrainParser().parse_args()
+        self.runtime_params = TrainParser().parse_args()
+        self.model_params = read_yaml_file(self.runtime_params.model_config)
+        self.model_architecture = self.model_params["type"]
+        self.all_params = {**vars(self.runtime_params), **self.model_params}
 
         # create output directory
-        self.result_dir = join(constants.OUTPUT_ROOT, self.params.result_dir)
+        self.result_dir = join(constants.OUTPUT_ROOT, self.runtime_params.result_dir)
         os.makedirs(self.result_dir, exist_ok=True)
-
-        # save params
-        pprint(vars(self.params))
-        logger.info(f'Saving train params to file {join(self.result_dir, "params.json")}')
-        with open(join(self.result_dir, "params.json"), "w") as param_fp:
-            json.dump(vars(self.params), param_fp, indent=2)
+        self.save_params()
+        self.model_params.pop("type")
 
         # load data
         self.features, self.labels, self.participant_id = self.get_dataset()
@@ -40,25 +39,32 @@ class Trainer:
         self.sign_to_prediction_id = get_sign_encoder()
         self.num_labels = len(self.sign_to_prediction_id)
 
-        # define model params
-        self.model_architecture = self.params.model_architecture
+        # define model runtime_params
         self.loss_function = "sparse_categorical_crossentropy"
         self.metrics = ["acc", keras.metrics.SparseTopKCategoricalAccuracy(k=3, name="t3_acc")]
 
-        # define training params
+        # define training runtime_params
         self.default_callbacks = self.get_default_callbacks()
+
+    def save_params(self) -> None:
+        # save runtime_params
+        pprint(self.all_params)
+        with open(join(self.result_dir, "all_params.json"), "w") as param_fp:
+            json.dump(self.all_params, param_fp, indent=2)
 
     def get_dataset(self) -> Tuple[np.ndarray, ...]:
         """Load features and labels from a numpy file."""
-        dataset = np.load(self.params.train_data, allow_pickle=True).item()
+        dataset = np.load(self.runtime_params.train_data, allow_pickle=True).item()
         features = np.array(dataset["features"], dtype=np.float32)
         assert not np.any(np.isnan(features)), "dataset contains NAN"
         labels = np.array(dataset["labels"], dtype=np.uint8)
         participant_id = np.array(dataset["participant_id"])
+        with open(join(self.result_dir, "data.conf"), "w") as fd:
+            json.dump(dataset["config"], fd, indent=2)
         return features, labels, participant_id
 
     def get_cross_validation_splits(self) -> Dict[int, Dict[str, list]]:
-        sgkf = StratifiedGroupKFold(n_splits=self.params.cross_validation_splits, shuffle=True)
+        sgkf = StratifiedGroupKFold(n_splits=self.runtime_params.cross_validation_splits, shuffle=True)
         data_idxs = range(len(self.features))
         cr_splits = {
             i: {"train": train_idxs, "val": val_idxs}
@@ -67,19 +73,20 @@ class Trainer:
         return cr_splits
 
     def get_model(self) -> Model:
-        """defines and builds model layers"""
         if self.model_architecture == "fully_connected_v1":
-            model_obj = FullyConnectedModel(input_shape=self.input_shape, n_labels=self.num_labels)
+            return FullyConnectedV1(**self.model_params)
         else:
-            raise RuntimeError
-        model_obj.create_layers()
-        return model_obj.build_model()
+            raise TypeError("Invalid Model type")
 
     def get_default_callbacks(self) -> list:
         """returns callbacks for training"""
         return [
-            keras.callbacks.EarlyStopping(patience=25, restore_best_weights=True, verbose=1),
-            keras.callbacks.ReduceLROnPlateau(patience=10, factor=0.5, verbose=1),
+            keras.callbacks.EarlyStopping(
+                patience=self.runtime_params.early_stopping_patience, restore_best_weights=True, verbose=1
+            ),
+            keras.callbacks.ReduceLROnPlateau(
+                patience=self.runtime_params.lr_reduce_patience, factor=self.runtime_params.lr_reduce_mult, verbose=1
+            ),
         ]
 
     def save_model(self, model: Model, save_dir: str) -> None:
@@ -95,21 +102,24 @@ class Trainer:
             train_y, val_y = self.labels[train_idxs], self.labels[val_idxs]
 
             model = self.get_model()
-            optimizer = keras.optimizers.Adam(self.params.lr)
+            optimizer = keras.optimizers.Adam(self.runtime_params.lr)
             model.compile(optimizer, self.loss_function, metrics=self.metrics)
-            if fold_num == 0:
-                model.summary()
 
             callbacks = self.default_callbacks + [
                 keras.callbacks.CSVLogger(join(self.result_dir, f"training_log_fold{fold_num:>02}.csv"))
             ]
+
+            model.build((None, *self.input_shape))
+            if fold_num == 0:
+                model.summary()
+
             model.fit(
                 train_x,
                 train_y,
                 validation_data=(val_x, val_y),
-                epochs=self.params.epoch,
+                epochs=self.runtime_params.epoch,
                 callbacks=callbacks,
-                batch_size=self.params.batch_size,
+                batch_size=self.runtime_params.batch_size,
             )
 
             # save model

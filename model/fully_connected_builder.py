@@ -1,36 +1,65 @@
-from typing import Any, Tuple
+from typing import Any
 
-import keras
 import tensorflow as tf
+from tensorflow import keras
 
-from model.abstract_model_builder import AbstractModelBuilder
+import constants
 
 
-class FullyConnectedModel(AbstractModelBuilder):
-    def __init__(self, input_shape: Tuple[int], **kwargs: Any):
-        super().__init__(input_shape)
-        self.init_fc = kwargs.get("init_fc", 512)
-        self.n_blocks = kwargs.get("n_blocks", 2)
-        self.dropout_1 = kwargs.get("dropout_1", 0.2)
-        self.dropout_2 = kwargs.get("dropout_2", 0.6)
-        self.n_labels = kwargs.get("n_labels", 250)
+class LinearBlock(keras.layers.Layer):
+    """Linear Block with BN, Activation and Dropout"""
 
-    @staticmethod
-    def get_fc_block(inputs: tf.Tensor, output_channels: int, dropout: float = 0.2) -> tf.Tensor:
-        x = keras.layers.Dense(output_channels)(inputs)
-        x = keras.layers.BatchNormalization()(x)
-        x = keras.layers.Activation("gelu")(x)
-        x = keras.layers.Dropout(dropout)(x)
+    def __init__(
+        self,
+        output_channels: int,
+        activation: str = "gelu",
+        dropout: float = 0.4,
+        name: str = "linearBlock",
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(name=name, **kwargs)
+        self.dense = keras.layers.Dense(output_channels)
+        self.bn = keras.layers.BatchNormalization()
+        self.activation = keras.layers.Activation(activation)
+        self.dropout = keras.layers.Dropout(dropout)
+
+    def call(self, inputs: tf.Tensor, *args: Any, **kwargs: Any) -> tf.Tensor:
+        x = self.dense(inputs)
+        x = self.bn(x)
+        x = self.activation(x)
+        x = self.dropout(x)
         return x
 
-    def create_layers(self) -> None:
-        self.input_layer = keras.layers.Input(shape=self.input_shape)
 
-        x = self.input_layer
-        for i in range(self.n_blocks):
-            x = self.get_fc_block(
-                x,
-                output_channels=self.init_fc // (2**i),
-                dropout=self.dropout_1 if (1 + i) != self.n_blocks else self.dropout_2,
-            )
-        self.output_layer = keras.layers.Dense(self.n_labels, activation="softmax")(x)
+class FullyConnectedV1(keras.models.Model):
+    def __init__(
+        self,
+        num_blocks: int = 2,
+        init_fc: int = 512,
+        dropout_inter: float = 0.2,
+        dropout_last: float = 0.6,
+        units_multiplier: float = 2.0,
+        name: str = "FullyConnectedV1",
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(name=name, **kwargs)
+
+        self.num_blocks = num_blocks
+        self.init_fc = init_fc
+        self.dropout_inter = dropout_inter
+        self.dropout_last = dropout_last
+        self.units_multiplier = units_multiplier
+
+        self.linear_blocks = []
+        for block_num in range(self.num_blocks):
+            output_channels = int(self.init_fc / (self.units_multiplier**block_num))
+            dropout = self.dropout_inter if (block_num + 1) != self.num_blocks else self.dropout_last
+            self.linear_blocks.append(LinearBlock(output_channels, dropout=dropout, name=f"linearBlock{block_num}"))
+        self.output_layer = keras.layers.Dense(constants.NUM_LABELS, activation="softmax")
+
+    def call(self, inputs: tf.Tensor, training: Any = None, mask: Any = None) -> tf.Tensor:
+        x = inputs
+        for i in range(self.num_blocks):
+            x = self.linear_blocks[i](x)
+        x = self.output_layer(x)
+        return x

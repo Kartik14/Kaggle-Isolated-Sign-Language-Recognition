@@ -48,5 +48,4 @@ def read_yaml_file(yaml_file: str) -> dict:
 
     with open(yaml_file) as fp:
         params = yaml.safe_load(fp)
-    print(params)
     return params
